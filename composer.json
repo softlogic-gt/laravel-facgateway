@@ -1,0 +1,28 @@
+{
+    "name": "softlogic-gt/laravel-epayserver",
+    "description": "Laravel EpayServer Payment Gateway",
+    "authors": [
+        {
+            "name": "Softlogic",
+            "email": "software@softlogic.com.gt"
+        }
+    ],
+    "require": {
+        "php" : ">=7.2",
+        "laravel-validation-rules/credit-card" : "^1.7"
+    },
+    "autoload": {
+        "classmap": [],
+        "psr-4": {
+            "SoftlogicGT\\LaravelEpayServer\\": "src"
+        }
+    },
+    "minimum-stability" : "stable",
+     "extra": {
+        "laravel": {
+            "providers": [
+                "SoftlogicGT\\LaravelEpayServer\\LaravelEpayServerServiceProvider"
+            ]
+        }
+    }
+}
