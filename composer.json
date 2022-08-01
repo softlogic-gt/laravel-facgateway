@@ -1,6 +1,6 @@
 {
-    "name": "softlogic-gt/laravel-epayserver",
-    "description": "Laravel EpayServer Payment Gateway",
+    "name": "softlogic-gt/laravel-facgateway",
+    "description": "Laravel FAC Gateway",
     "authors": [
         {
             "name": "Softlogic",
@@ -14,14 +14,14 @@
     "autoload": {
         "classmap": [],
         "psr-4": {
-            "SoftlogicGT\\LaravelEpayServer\\": "src"
+            "SoftlogicGT\\LaravelFacGateway\\": "src"
         }
     },
     "minimum-stability" : "stable",
      "extra": {
         "laravel": {
             "providers": [
-                "SoftlogicGT\\LaravelEpayServer\\LaravelEpayServerServiceProvider"
+                "SoftlogicGT\\LaravelFacGateway\\LaravelFacGatewayServiceProvider"
             ]
         }
     }
