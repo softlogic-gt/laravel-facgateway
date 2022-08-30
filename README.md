@@ -6,7 +6,7 @@ The package automatically validates all input data.
 
 ## Installation
 
-`composer require softlogic-gt/laravel-facpayment`
+`composer require softlogic-gt/laravel-facgateway`
 
 Set your environment variables
 
@@ -25,7 +25,7 @@ In the constructor, if the email is specified, a confirmation receipt is sent. T
 ### Sale
 
 ```
-use SoftlogicGT\LaravelFacPayment\LaravelFacPayment;
+use SoftlogicGT\FacPayment\FacPayment;
 
 $creditCard = '4000000000000416';
 $expirationMonth = '2';
@@ -34,7 +34,7 @@ $cvv2 = '123';
 $amount = 1230.00;
 $externalId = '557854';
 
-$server = new LaravelFacPayment(
+$server = new FacPayment(
     [
         'receipt' => [
             'email'   => 'email@email.com',

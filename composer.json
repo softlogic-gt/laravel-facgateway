@@ -14,14 +14,14 @@
     "autoload": {
         "classmap": [],
         "psr-4": {
-            "SoftlogicGT\\LaravelFacGateway\\": "src"
+            "SoftlogicGT\\FacGateway\\": "src"
         }
     },
     "minimum-stability" : "stable",
      "extra": {
         "laravel": {
             "providers": [
-                "SoftlogicGT\\LaravelFacGateway\\LaravelFacGatewayServiceProvider"
+                "SoftlogicGT\\FacGateway\\FacGatewayServiceProvider"
             ]
         }
     }
