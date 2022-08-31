@@ -10,14 +10,14 @@
         </tr>
         <tr>
             <td>Monto de la venta</td>
-            <td>Q. {{ number_format($receiptData['amount'] / 100,2) }}</td>
+            <td>Q. {{ number_format($receiptData['amount'],2) }}</td>
         </tr>
         <tr>
             <td>Nombre tarjeta</td>
             <td>{{ $receiptData['name'] }}</td>
         </tr>
         <tr>
-            <td>No. tarjeta</td>
+            <td>Tarjeta</td>
             <td>{{ $receiptData['cc'] }}</td>
         </tr>
         <tr>
@@ -27,10 +27,6 @@
         <tr>
             <td>Número de autorización</td>
             <td>{{ $receiptData['auth_number'] }}</td>
-        </tr>
-        <tr>
-            <td>Afiliación</td>
-            <td>{{ $receiptData['merchant'] }}</td>
         </tr>
         <tr>
             <td>Número de auditoría</td>

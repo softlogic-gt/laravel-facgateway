@@ -2,7 +2,7 @@
 
 Send payment transactions to First Atlantic Commerce service.
 You must have an active account for this to work.
-The package automatically validates all input data.
+The package automatically validates all input data, generates HTML and redirects to specified route.
 
 ## Installation
 
@@ -11,11 +11,12 @@ The package automatically validates all input data.
 Set your environment variables
 
 ```
-FAC_SERVER_TEST=true
-FAC_SERVER_AFFILLIATION=
-FAC_SERVER_TERMINAL=
-FAC_SERVER_USER=
-FAC_SERVER_PASSWORD=
+FAC_TEST=true
+FAC_ID=818181818
+FAC_PASSWORD=fadsfadsfdasfda1231231232fasf
+FAC_REDIRECT=http://localhost/facresponse
+FAC_SUCCESS_ACTION=FacController@success
+FAC_ERROR_ACTION=FacController@error
 ```
 
 ## Usage
@@ -25,7 +26,7 @@ In the constructor, if the email is specified, a confirmation receipt is sent. T
 ### Sale
 
 ```
-use SoftlogicGT\FacPayment\FacPayment;
+use SoftlogicGT\FacGateway\FacGateway;
 
 $creditCard = '4000000000000416';
 $expirationMonth = '2';
@@ -34,19 +35,24 @@ $cvv2 = '123';
 $amount = 1230.00;
 $externalId = '557854';
 
-$server = new FacPayment(
-    [
-        'receipt' => [
-            'email'   => 'email@email.com',
-            'subject' => 'My custom subject',
-            'name'    => 'The name to print on the receipt'
-        ]
-    ]
-);
+$server = new FacGateway();
 
-$response = $server->sale($creditCard, $expirationMonth, $expirationYear, $cvv2, $amount, $externalId);
+$html = $server->sale($creditCard, $expirationMonth, $expirationYear, $cvv2, $amount, $externalId);
 ```
 
-It will throw an exception if any error is received from FAC, or an object with the following info:
+It will throw an exception if any error is received from FAC, or an HTML to render for 3DS validation
 
-`[[auditNumber] => 111111 [referenceNumber] => 254555555 [authorizationNumber] => 022226 [responseCode] => 00 [messageType] => 0210]`
+After rendering the HTML, you will get a `POST` request to `FAC_REDIRECT`, where you have to process the correct response, and you should handle that response like this:
+
+```
+    $fc = new FacGateway([
+        'receipt' => [
+            'name'  => 'Juan Samara',
+            'email' => 'jgalindo@softlogic.com.gt',
+        ],
+    ]);
+
+    return $fc->callback($request);
+```
+
+This will then call the corresponding actions specified in the `FAC_SUCCESS_ACTION` or `FAC_ERROR_ACTION`
