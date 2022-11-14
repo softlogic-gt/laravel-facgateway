@@ -136,18 +136,6 @@ class FacGateway
                     "CardholderName" => $this->receipt['name'],
                 ],
                 "OrderIdentifier"        => $externalId,
-                "BillingAddress"         => [
-                    "FirstName"    => "John",
-                    "LastName"     => "Smith",
-                    "Line1"        => "1200 Whitewall Blvd.",
-                    "Line2"        => "Unit 15",
-                    "City"         => "Boston",
-                    "State"        => "NY",
-                    "PostalCode"   => "200341",
-                    "CountryCode"  => "840",
-                    "EmailAddress" => "john.smith@gmail.com",
-                    "PhoneNumber"  => "211-345-6790",
-                ],
                 "AddressMatch"           => false,
                 "ExtendedData"           => [
                     "ThreeDSecure"        => [
@@ -157,6 +145,8 @@ class FacGateway
                     "MerchantResponseUrl" => config('laravel-facgateway.redirect'),
                 ],
             ];
+
+            Log::info($params);
 
             $client   = new Client();
             $response = $client->post($this->getURL() . $messageType, [
@@ -263,13 +253,13 @@ class FacGateway
                 case 'Visa':
                 case 'American Express':
                     if ($eci != '05') {
-                        return $this->error('Autenticación 3Ds fallida');
+                        return $this->error($response, 'Autenticación 3Ds fallida');
                     }
                     break;
 
                 case 'MasterCard':
                     if ($eci != '02') {
-                        return $this->error('Autenticación 3Ds fallida');
+                        return $this->error($response, 'Autenticación 3Ds fallida');
                     }
                     break;
             }
@@ -286,26 +276,31 @@ class FacGateway
                 ]);
                 $json = json_decode((string) $response->getBody());
             } catch (Throwable $th) {
-                return $this->error("Error SPI, token incorrecto." . $th->getMessage());
+                return $this->error($response, "Error SPI, token incorrecto." . $th->getMessage());
             }
             if (!$json->Approved) {
                 if (property_exists($json, 'Errors')) {
-                    return $this->error($json->Errors[0]->Message);
+                    return $this->error($response, $json->Errors[0]->Message);
                 } else {
-                    return $this->error($json->ResponseMessage);
+                    return $this->error($response, $json->ResponseMessage);
                 }
             }
 
             return $this->success($json);
 
         } else {
-            return $this->error("Hubo un error " . $message);
+            return $this->error($response, "Hubo un error " . $message);
         }
     }
 
-    protected function error($error)
+    protected function error($response, $error)
     {
-        return redirect()->action(config('laravel-facgateway.error_action'), ['error' => $error]);
+        $ret = [
+            'error'    => $error,
+            'response' => (array) $response,
+        ];
+
+        return redirect()->action(config('laravel-facgateway.error_action'), $ret);
     }
 
     protected function success($response)
@@ -332,7 +327,7 @@ class FacGateway
 
     protected function getURL()
     {
-        return config('laravel-facgateway.test') ? 'https://staging.ptranz.com/api/' : 'https://TBD.ptranz.com/api/';
+        return config('laravel-facgateway.test') ? 'https://staging.ptranz.com/api/' : 'https://gateway.ptranz.com/api/';
     }
 
     protected function getTimeout()
