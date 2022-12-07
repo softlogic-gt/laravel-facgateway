@@ -120,9 +120,9 @@ class FacGateway
             throw new ValidationException($validator);
         }
 
-        $month = str_pad($expirationMonth, 2, "0", STR_PAD_LEFT);
-        $year  = str_pad($expirationYear, 2, "0", STR_PAD_LEFT);
-
+        $month      = str_pad($expirationMonth, 2, "0", STR_PAD_LEFT);
+        $year       = str_pad($expirationYear, 2, "0", STR_PAD_LEFT);
+        $externalId = '00000000-0000-0000-0000-' . str_pad($externalId, 12, "0", STR_PAD_LEFT);
         try {
             $params = [
                 "TransacctionIdentifier" => $externalId,
