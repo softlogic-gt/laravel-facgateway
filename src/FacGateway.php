@@ -252,13 +252,13 @@ class FacGateway
             switch ($cardBrand) {
                 case 'Visa':
                 case 'American Express':
-                    if ($eci != '05') {
+                    if (!in_array($eci, ['05', '06'])) {
                         return $this->error($response, 'Autenticación 3Ds fallida');
                     }
                     break;
 
                 case 'MasterCard':
-                    if ($eci != '02') {
+                    if (!in_array($eci, ['01', '02'])) {
                         return $this->error($response, 'Autenticación 3Ds fallida');
                     }
                     break;
