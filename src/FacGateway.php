@@ -306,20 +306,25 @@ class FacGateway
     protected function success($response)
     {
         if ($this->receipt['email']) {
-            $receiptData = [
-                'email'        => $this->receipt['email'],
-                'subject'      => $this->receipt['subject'],
-                'name'         => $this->receipt['name'],
-                'cc'           => $response->CardBrand,
-                'date'         => Carbon::now(),
-                'amount'       => $response->TotalAmount,
-                'ref_number'   => $response->OrderIdentifier,
-                'auth_number'  => $response->AuthorizationCode,
-                'audit_number' => $response->TransactionIdentifier,
-                'merchant'     => '',
-            ];
+            try {
 
-            SendReceipt::dispatch($receiptData);
+                $receiptData = [
+                    'email'        => $this->receipt['email'],
+                    'subject'      => $this->receipt['subject'],
+                    'name'         => $this->receipt['name'],
+                    'cc'           => $response->CardBrand,
+                    'date'         => Carbon::now(),
+                    'amount'       => $response->TotalAmount,
+                    'ref_number'   => $response->OrderIdentifier,
+                    'auth_number'  => $response->AuthorizationCode,
+                    'audit_number' => $response->TransactionIdentifier,
+                    'merchant'     => '',
+                ];
+
+                SendReceipt::dispatch($receiptData);
+            } catch (\Throwable $th) {
+                Log::error('FACGATEWAY: Error sending email ' . $th->getMessage());
+            }
         }
 
         return redirect()->action(config('laravel-facgateway.success_action'), (array) $response);
