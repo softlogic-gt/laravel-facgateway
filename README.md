@@ -21,7 +21,7 @@ FAC_ERROR_ACTION=FacController@error
 
 ## Usage
 
-In the constructor, if the email is specified, a confirmation receipt is sent. The default subject is `Comprobante de pago`.
+In the constructor, if the email is specified, a confirmation receipt is sent. The default subject is `Comprobante de pago`. For 3DS, an email address is required
 
 ### Sale
 
@@ -35,12 +35,21 @@ $cvv2 = '123';
 $amount = 1230.00;
 $externalId = '557854';
 
-$server = new FacGateway();
+$server = new FacGateway([
+    'receipt' => [
+        'email' => 'buyer@email.com',
+        'name'  => 'Buyer name',
+    ],
+]);
 
 $html = $server->sale($creditCard, $expirationMonth, $expirationYear, $cvv2, $amount, $externalId);
 ```
 
 It will throw an exception if any error is received from FAC, or an HTML to render for 3DS validation
+
+```
+return response($html, 200)->header('Content-Type', 'text/html');
+```
 
 After rendering the HTML, you will get a `POST` request to `FAC_REDIRECT`, where you have to process the correct response, and you should handle that response like this:
 

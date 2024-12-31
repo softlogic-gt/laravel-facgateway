@@ -66,7 +66,16 @@ class FacGateway
 
     public function sale($creditCard, $expirationMonth, $expirationYear, $cvv2, $amount, $externalId)
     {
-        return $this->common($creditCard, $expirationMonth, $expirationYear, $cvv2, $amount, $externalId, 'spi/sale');
+        return $this->common($creditCard, $expirationMonth, $expirationYear, $cvv2, $amount, $externalId, 'spi/Sale');
+    }
+
+    public function alive()
+    {
+        $client   = new Client();
+        $response = $client->get($this->getURL() . 'Alive');
+        $json     = json_decode((string) $response->getBody());
+
+        return $json;
     }
 
     public function installments($creditCard, $expirationMonth, $expirationYear, $cvv2, $amount, $externalId, $installments)
@@ -100,6 +109,10 @@ class FacGateway
 
     protected function common($creditCard, $expirationMonth, $expirationYear, $cvv2, $amount, $externalId, $messageType, $additionalData = '')
     {
+        if (!config('laravel-facgateway.id') || !config('laravel-facgateway.password')) {
+            abort(422, 'Debes configurar el FAC ID y Password en tu ambiente');
+        }
+
         $data = compact("creditCard", "expirationMonth", "expirationYear", "cvv2", "amount", "externalId", "messageType", "additionalData");
 
         $rules = [
@@ -129,6 +142,7 @@ class FacGateway
                 "TotalAmount"            => $amount,
                 "CurrencyCode"           => "320",
                 "ThreeDSecure"           => true,
+                "Tokenize"               => true,
                 "Source"                 => [
                     "CardPan"        => $creditCard,
                     "CardCvv"        => $cvv2,
@@ -137,16 +151,17 @@ class FacGateway
                 ],
                 "OrderIdentifier"        => $externalId,
                 "AddressMatch"           => false,
+                "EmailAddress"           => $this->receipt['email'],
                 "ExtendedData"           => [
                     "ThreeDSecure"        => [
-                        "ChallengeWindowSize" => 4,
+                        "ChallengeWindowSize" => 5,
                         "ChallengeIndicator"  => "01",
                     ],
                     "MerchantResponseUrl" => config('laravel-facgateway.redirect'),
                 ],
             ];
 
-            Log::info($params);
+            Log::info(json_encode($params));
 
             $client   = new Client();
             $response = $client->post($this->getURL() . $messageType, [
@@ -159,7 +174,8 @@ class FacGateway
             $json = json_decode((string) $response->getBody());
         } catch (Throwable $th) {
             Log::error($th->getMessage());
-            abort(500, "No fue posible realizar la transacción, intente de nuevo");
+            $code = $th->getCode() ? $th->getCode() : 400;
+            abort($code, "No fue posible realizar la transacción, intente de nuevo");
         }
 
         if (property_exists($json, 'Errors')) {
