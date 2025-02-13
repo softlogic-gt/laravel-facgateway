@@ -21,6 +21,7 @@ class FacGateway
         'subject' => 'Comprobante de pago',
         'name'    => '',
     ];
+    protected $redirect = null;
 
     protected $codes = [
         "00" => "Aprobada",
@@ -62,11 +63,64 @@ class FacGateway
                 $this->receipt['name'] = $config['receipt']['name'];
             }
         }
+        if (isset($config['redirect'])) {
+            $this->redirect = $config['redirect'];
+        }
     }
 
     public function sale($creditCard, $expirationMonth, $expirationYear, $cvv2, $amount, $externalId)
     {
-        return $this->common($creditCard, $expirationMonth, $expirationYear, $cvv2, $amount, $externalId, 'spi/Sale');
+        return $this->common(true, $creditCard, $expirationMonth, $expirationYear, $cvv2, $amount, $externalId, 'spi/Sale');
+    }
+
+    public function token($creditCard, $expirationMonth, $expirationYear, $cvv2, $externalId)
+    {
+        $rules = [
+            'creditCard'      => ['required', new CardNumber],
+            'cvv2'            => ['required', new CardCvc($creditCard)],
+            'expirationMonth' => 'required|integer|between:1,12',
+            'expirationYear'  => 'required|integer|between:1,99',
+        ];
+
+        $data = compact(
+            "creditCard", "expirationMonth", "expirationYear",
+            "cvv2", "externalId"
+        );
+
+        $validator = Validator::make($data, $rules);
+
+        if ($validator->fails()) {
+            \Log::error($validator->errors());
+            throw new ValidationException($validator);
+        }
+
+        return $this->common(true, $creditCard, $expirationMonth, $expirationYear, $cvv2, 0, $externalId, 'spi/RiskMgmt');
+    }
+
+    public function salewithtoken($token, $expirationMonth, $expirationYear, $cvv2, $amount, $externalId)
+    {
+        $rules = [
+            'token'           => 'required',
+            'expirationMonth' => 'required|integer|between:1,12',
+            'expirationYear'  => 'required|integer|between:1,99',
+            'cvv2'            => 'required',
+            'amount'          => 'required|numeric',
+            'externalId'      => 'required',
+        ];
+
+        $data = compact(
+            "creditCard", "expirationMonth", "expirationYear",
+            "cvv2", "externalId"
+        );
+
+        $validator = Validator::make($data, $rules);
+
+        if ($validator->fails()) {
+            \Log::error($validator->errors());
+            throw new ValidationException($validator);
+        }
+
+        return $this->common(false, $token, $expirationMonth, $expirationYear, $cvv2, $amount, $externalId, 'spi/Sale');
     }
 
     public function alive()
@@ -104,64 +158,73 @@ class FacGateway
 
     public function reversal($creditCard, $expirationMonth, $expirationYear, $cvv2, $amount, $externalId)
     {
-        return $this->common($creditCard, $expirationMonth, $expirationYear, $cvv2, $amount, $externalId, '0400');
+        return $this->common(true, $creditCard, $expirationMonth, $expirationYear, $cvv2, $amount, $externalId, '0400');
     }
 
-    protected function common($creditCard, $expirationMonth, $expirationYear, $cvv2, $amount, $externalId, $messageType, $additionalData = '')
+    protected function common($isCC, $creditCardOrToken, $expirationMonth, $expirationYear, $cvv2, $amount, $externalId, $messageType, $additionalData = '')
     {
         if (!config('laravel-facgateway.id') || !config('laravel-facgateway.password')) {
             abort(422, 'Debes configurar el FAC ID y Password en tu ambiente');
         }
 
-        $data = compact("creditCard", "expirationMonth", "expirationYear", "cvv2", "amount", "externalId", "messageType", "additionalData");
+        $data = compact(
+            "creditCardOrToken", "expirationMonth", "expirationYear", "cvv2", "amount",
+            "externalId", "messageType", "additionalData"
+        );
 
-        $rules = [
-            'creditCard'      => ['required', new CardNumber],
-            'cvv2'            => ['required', new CardCvc($creditCard)],
-            'expirationMonth' => 'required|integer|between:1,12',
-            'expirationYear'  => 'required|integer|between:1,99',
-            'amount'          => 'required|numeric',
-            'externalId'      => 'required',
-            'messageType'     => 'required',
-        ];
-
-        $validator = Validator::make($data, $rules);
-
-        if ($validator->fails()) {
-
-            \Log::error($validator->errors());
-            throw new ValidationException($validator);
+        if ($messageType == 'spi/RiskMgmt') {
+            $three = [
+                "ChallengeIndicator"      => "04",
+                "AuthenticationIndicator" => "04",
+                "MessageCategory"         => "02",
+            ];
+        } else {
+            $three = [
+                "ChallengeWindowSize" => 4,
+                "ChallengeIndicator"  => "01",
+            ];
         }
 
-        $month      = str_pad($expirationMonth, 2, "0", STR_PAD_LEFT);
-        $year       = str_pad($expirationYear, 2, "0", STR_PAD_LEFT);
-        $externalId = '00000000-0000-0000-0000-' . str_pad($externalId, 12, "0", STR_PAD_LEFT);
+        $month = str_pad($expirationMonth, 2, "0", STR_PAD_LEFT);
+        $year  = str_pad($expirationYear, 2, "0", STR_PAD_LEFT);
+
+        if ($isCC) {
+            $source = [
+                "CardPan"        => $creditCardOrToken,
+                "CardCvv"        => $cvv2,
+                "CardExpiration" => $year . $month,
+                "CardholderName" => $this->receipt['name'],
+            ];
+
+        } else {
+            $source = [
+                "Token"          => $creditCardOrToken,
+                "CardCvv"        => $cvv2,
+                "CardExpiration" => $year . $month,
+                "CardholderName" => $this->receipt['name'],
+            ];
+        }
+
         try {
-            $params = [
+            $redirectUri = $this->redirect ? $this->redirect : config('laravel-facgateway.redirect');
+            $params      = [
                 "TransacctionIdentifier" => $externalId,
                 "TotalAmount"            => $amount,
                 "CurrencyCode"           => "320",
                 "ThreeDSecure"           => true,
                 "Tokenize"               => true,
-                "Source"                 => [
-                    "CardPan"        => $creditCard,
-                    "CardCvv"        => $cvv2,
-                    "CardExpiration" => $year . $month,
-                    "CardholderName" => $this->receipt['name'],
-                ],
+                "Source"                 => $source,
                 "OrderIdentifier"        => $externalId,
                 "AddressMatch"           => false,
                 "EmailAddress"           => $this->receipt['email'],
                 "ExtendedData"           => [
-                    "ThreeDSecure"        => [
-                        "ChallengeWindowSize" => 5,
-                        "ChallengeIndicator"  => "01",
-                    ],
-                    "MerchantResponseUrl" => config('laravel-facgateway.redirect'),
+                    "ThreeDSecure"        => $three,
+                    "MerchantResponseUrl" => $redirectUri,
                 ],
             ];
 
-            Log::info(json_encode($params));
+            Log::warning('Sending params');
+            Log::warning(json_encode($params));
 
             $client   = new Client();
             $response = $client->post($this->getURL() . $messageType, [
