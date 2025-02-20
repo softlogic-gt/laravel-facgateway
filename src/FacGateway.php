@@ -109,8 +109,7 @@ class FacGateway
         ];
 
         $data = compact(
-            "creditCard", "expirationMonth", "expirationYear",
-            "cvv2", "externalId"
+            "token", "expirationMonth", "expirationYear", "cvv2", "amount", "externalId"
         );
 
         $validator = Validator::make($data, $rules);
@@ -121,6 +120,28 @@ class FacGateway
         }
 
         return $this->common(false, $token, $expirationMonth, $expirationYear, $cvv2, $amount, $externalId, 'spi/Sale');
+    }
+
+    public function payment($spiToken)
+    {
+        try {
+            $client   = new Client();
+            $response = $client->post($this->getURL() . 'spi/Payment', [
+                'headers' => [
+                    'PowerTranz-PowerTranzId'       => config('laravel-facgateway.id'),
+                    'PowerTranz-PowerTranzPassword' => config('laravel-facgateway.password'),
+                ],
+                'json'    => $spiToken,
+            ]);
+            $json = json_decode((string) $response->getBody());
+
+            return $json;
+
+        } catch (Throwable $th) {
+            Log::error($th->getMessage());
+            $code = $th->getCode() ? $th->getCode() : 400;
+            abort($code, "No fue posible realizar la transacción" . $th->getMessage());
+        }
     }
 
     public function alive()
